@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SCADA Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>SCADA Monitoring Dashboard</h1>
+  <div id="status">
+    <p>Voltage: <span id="voltage">--</span> V</p>
+    <p>Current: <span id="current">--</span> A</p>
+    <p>Temperature: <span id="temperature">--</span> °C</p>
+    <p>Status: <span id="alert">--</span></p>
+  </div>
+
+  <div>
+    <h2>Recent Attacks</h2>
+    <pre id="log">--</pre>
+  </div>
+
+  <canvas id="trafficChart" width="600" height="200"></canvas>
+
+  <script>
+    const voltage = document.getElementById("voltage");
+    const current = document.getElementById("current");
+    const temperature = document.getElementById("temperature");
+    const alertText = document.getElementById("alert");
+    const log = document.getElementById("log");
+
+    const ctx = document.getElementById('trafficChart').getContext('2d');
+    const trafficChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Requests/sec',
+          data: [],
+          borderColor: 'blue',
+          tension: 0.2
+        }]
+      }
+    });
+
+    setInterval(async () => {
+      const res = await fetch("/status");
+      const data = await res.json();
+
+      voltage.textContent = data.voltage;
+      current.textContent = data.current;
+      temperature.textContent = data.temperature;
+      alertText.textContent = data.alert || "Normal";
+      log.textContent = data.logs.join("\n");
+
+      const time = new Date().toLocaleTimeString();
+      trafficChart.data.labels.push(time);
+      trafficChart.data.datasets[0].data.push(data.traffic);
+      if (trafficChart.data.labels.length > 10) {
+        trafficChart.data.labels.shift();
+        trafficChart.data.datasets[0].data.shift();
+      }
+      trafficChart.update();
+    }, 1000);
+  </script>
+</body>
+</html>
