@@ -26,14 +26,13 @@ def index():
 def receive_data():
     global request_log, alerts, attack_log
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     timestamp = datetime.now()
 
     request_log = [t for t in request_log if t > timestamp - timedelta(seconds=1)]
     request_log.append(timestamp)
 
     status = 200
-    alert = False
     message = "Normal"
 
     # Check for DoS attack
@@ -43,11 +42,14 @@ def receive_data():
         attack_log.append(f"[{timestamp}] DoS Detected")
         return jsonify({"status": status, "message": message}), status
 
+    # Record the reading so the dashboard can display it — including
+    # out-of-range values, which are the evidence of a spoofing attack.
+    data_store.append({**data, "timestamp": timestamp.isoformat()})
+
     # Threshold checks
     for param, value in data.items():
         min_val, max_val = THRESHOLDS.get(param, (None, None))
         if min_val is not None and (value < min_val or value > max_val):
-            alert = True
             message = f"{param.upper()} out of range: {value}"
             alerts.append(f"[{timestamp}] {message}")
             status = 403
