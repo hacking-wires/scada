@@ -1,20 +1,38 @@
-import requests
+"""Normal-operation SCADA simulator.
+
+Sends readings that mostly stay inside the safe operating envelope so the
+dashboard shows a healthy baseline. Use attacks/*.py to inject anomalies.
+"""
+
 import random
 import time
 
+import requests
+
 URL = "http://127.0.0.1:5000/data"
 
-while True:
-    payload = {
-        "voltage": round(random.uniform(180, 290), 2),
-        "current": round(random.uniform(1, 15), 2),
-        "temperature": round(random.uniform(0, 100), 2)
-    }
+# stay comfortably inside THRESHOLDS in server.py
+RANGES = {
+    "voltage":     (210.0, 240.0),
+    "current":     (4.0,   9.0),
+    "temperature": (20.0,  55.0),
+}
 
-    try:
-        res = requests.post(URL, json=payload)
-        print(f"Sent: {payload} | Status: {res.status_code}, Message: {res.json()['message']}")
-    except Exception as e:
-        print(f"Error sending data: {e}")
-    
-    time.sleep(1)  # 1 second interval
+
+def next_reading():
+    return {k: round(random.uniform(lo, hi), 2) for k, (lo, hi) in RANGES.items()}
+
+
+def main():
+    while True:
+        payload = next_reading()
+        try:
+            res = requests.post(URL, json=payload, timeout=2)
+            print(f"sent {payload} -> {res.status_code} {res.json()['message']}")
+        except requests.RequestException as e:
+            print(f"send failed: {e}")
+        time.sleep(1)
+
+
+if __name__ == "__main__":
+    main()

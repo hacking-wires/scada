@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,8 +15,7 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Syntax check
         run: |
-          python -m py_compile server.py
-          python -m py_compile simulator.py
-      - name: Boot smoke test
-        run: |
-          python -c "import server; c = server.app.test_client(); r = c.get('/status'); assert r.status_code == 200, r.status_code"
+          python -m py_compile server.py simulator.py
+          python -m py_compile attacks/spoof.py attacks/dos.py
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
